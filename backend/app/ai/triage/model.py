@@ -10,6 +10,21 @@ LABELS = [
     "LEVEL_4_ROUTINE",
 ]
 
+RISK_SCORE_BY_LEVEL = {
+    "LEVEL_1_EMERGENCY": 100,
+    "LEVEL_2_URGENT": 75,
+    "LEVEL_3_PRIMARY_CARE": 45,
+    "LEVEL_4_ROUTINE": 15,
+}
+
+RISK_LEVEL_BY_SCORE = {
+    "CRITICAL": (80, 100),
+    "HIGH": (60, 79),
+    "MODERATE": (30, 59),
+    "LOW": (0, 29),
+}
+
+
 @lru_cache(maxsize=1)
 def _load_classifier():
     from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -23,6 +38,29 @@ def _load_classifier():
     )
     model.eval()
     return tokenizer, model, source
+
+
+def _risk_indicator(triage_level: str, confidence: float, human_review: bool = False) -> dict:
+    score = RISK_SCORE_BY_LEVEL.get(triage_level, 45)
+    # Low-confidence predictions are deliberately prevented from looking safer
+    # than they are; the score remains tied to the conservative triage level.
+    if human_review:
+        score = max(score, 45)
+    risk_level = next(
+        name for name, (minimum, maximum) in RISK_LEVEL_BY_SCORE.items()
+        if minimum <= score <= maximum
+    )
+    return {
+        "risk_score": score,
+        "risk_level": risk_level,
+        "risk_label": {
+            "CRITICAL": "Immediate emergency attention",
+            "HIGH": "Urgent medical attention",
+            "MODERATE": "Primary-care assessment recommended",
+            "LOW": "Routine assessment / follow-up",
+        }[risk_level],
+        "confidence_percent": round(confidence * 100, 1),
+    }
 
 
 def analyze_triage(text, language, vitals=None, history=None):
@@ -53,6 +91,8 @@ def analyze_triage(text, language, vitals=None, history=None):
             "model": BASE_MODEL_ID,
             "model_status": "safety_override",
             "decision_support_only": True,
+            "human_review_required": True,
+            **_risk_indicator("LEVEL_1_EMERGENCY", 1.0, True),
         }
 
     try:
@@ -66,7 +106,8 @@ def analyze_triage(text, language, vitals=None, history=None):
             confidence = float(confidence)
             predicted = LABELS[int(index)]
 
-        if confidence < 0.60 or source == BASE_MODEL_ID:
+        human_review = confidence < 0.60 or source == BASE_MODEL_ID
+        if human_review:
             predicted = "LEVEL_3_PRIMARY_CARE" if text else "LEVEL_4_ROUTINE"
             recommended = "Requires healthcare professional review because the classifier is unavailable, untrained, or below the confidence threshold."
         else:
@@ -75,16 +116,19 @@ def analyze_triage(text, language, vitals=None, history=None):
         return {
             "triage_level": predicted,
             "confidence": round(confidence, 4),
-            "reason_codes": [],
+            "reason_codes": ["LOW_CONFIDENCE_HUMAN_REVIEW"] if confidence < 0.60 else [],
             "red_flags": [],
             "recommended_action": recommended,
             "model": source,
             "model_status": "loaded",
             "decision_support_only": True,
+            "human_review_required": human_review,
+            **_risk_indicator(predicted, confidence, human_review),
         }
     except Exception as exc:
+        predicted = "LEVEL_3_PRIMARY_CARE" if text else "LEVEL_4_ROUTINE"
         return {
-            "triage_level": "LEVEL_3_PRIMARY_CARE" if text else "LEVEL_4_ROUTINE",
+            "triage_level": predicted,
             "confidence": 0.0,
             "reason_codes": ["MODEL_UNAVAILABLE"],
             "red_flags": [],
@@ -92,4 +136,6 @@ def analyze_triage(text, language, vitals=None, history=None):
             "model": BASE_MODEL_ID,
             "model_status": f"unavailable: {type(exc).__name__}",
             "decision_support_only": True,
+            "human_review_required": True,
+            **_risk_indicator(predicted, 0.0, True),
         }
