@@ -1,0 +1,9 @@
+{
+  "name": "arogyasetu-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev": "vite", "build": "tsc -b && vite build", "preview": "vite preview"},
+  "dependencies": {"@vitejs/plugin-react": "latest", "dexie": "latest", "i18next": "latest", "react": "latest", "react-dom": "latest", "react-i18next": "latest"},
+  "devDependencies": {"typescript": "latest", "vite": "latest"}
+}
