@@ -3,6 +3,16 @@ import { LANGUAGES } from '../../config/languages';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+const riskClass = (level?: string) => {
+  switch (level) {
+    case 'CRITICAL': return 'risk-critical';
+    case 'HIGH': return 'risk-high';
+    case 'MODERATE': return 'risk-moderate';
+    case 'LOW': return 'risk-low';
+    default: return 'risk-unknown';
+  }
+};
+
 export function App() {
   const [language, setLanguage] = useState('en');
   const [text, setText] = useState('');
@@ -14,7 +24,8 @@ export function App() {
     setBusy(true);
     try {
       const response = await fetch(`${API}/triage/analyze`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, language, vitals: {} })
       });
       setResult(await response.json());
@@ -32,7 +43,21 @@ export function App() {
       <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Enter or transcribe patient symptoms..." rows={6}/>
       <button onClick={analyze} disabled={busy}>{busy ? 'Analyzing…' : 'Run AI Triage'}</button>
     </section>
-    {result && <section className="card result"><h2>Triage result</h2><div className="level">{result.triage_level || 'Unavailable'}</div><p>Confidence: {result.confidence ?? '—'}</p><p>{result.recommended_action}</p><p className="notice">{result.disclaimer || 'Human healthcare professional review is required.'}</p></section>}
+    {result && !result.error && <section className="card result">
+      <h2>Triage result</h2>
+      <div className={`risk-indicator ${riskClass(result.risk_level)}`}>
+        <div className="risk-title">{result.risk_level || 'UNKNOWN'} RISK</div>
+        <div className="risk-score">{result.risk_score ?? '—'}<span>/100</span></div>
+        <div className="risk-label">{result.risk_label || 'Requires professional review'}</div>
+        <div className="risk-bar"><span style={{ width: `${Math.min(100, Math.max(0, result.risk_score ?? 0))}%` }} /></div>
+      </div>
+      <div className="level">{result.triage_level || 'Unavailable'}</div>
+      <p>Model confidence: {result.confidence_percent ?? ((result.confidence ?? 0) * 100).toFixed(1)}%</p>
+      <p>{result.recommended_action}</p>
+      {result.human_review_required && <p className="notice warning">⚠ Human healthcare professional review required.</p>}
+      <p className="notice">AI-assisted decision support only — not a medical diagnosis.</p>
+    </section>}
+    {result?.error && <section className="card result"><h2>Service unavailable</h2><p>{result.error}</p></section>}
     <footer>AI-assisted decision support only — not a diagnosis.</footer>
   </main>;
 }
