@@ -1,11 +1,40 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.routes import router
 
-app = FastAPI(title="AROGYASETU AI", version="0.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="AROGYASETU AI", version="0.2.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(router, prefix="/api")
+
+
+@app.on_event("startup")
+def startup() -> None:
+    if os.getenv("USE_DATABASE", "false").lower() != "true":
+        return
+    try:
+        from app.db import init_db
+        init_db()
+    except Exception as exc:
+        # Keep the service bootable for an offline/demo environment.
+        print(f"Database initialization skipped: {exc}")
+
 
 @app.get("/api/health")
 def health():
-    return {"backend":"healthy", "database":"configured", "asr_model":"configured", "translation_model":"configured", "triage_model":"configured"}
+    return {
+        "backend": "healthy",
+        "database": "enabled" if os.getenv("USE_DATABASE", "false").lower() == "true" else "demo-memory",
+        "asr_model": "ai4bharat/indic-conformer-600m-multilingual",
+        "translation_model": "ai4bharat/indictrans2-indic-indic-dist-320M",
+        "triage_model": "ai4bharat/indic-bert + synthetic fine-tune when available",
+        "decision_support_only": True,
+    }
