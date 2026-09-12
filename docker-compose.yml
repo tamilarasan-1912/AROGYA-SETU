@@ -5,15 +5,30 @@ services:
       POSTGRES_DB: arogya
       POSTGRES_USER: arogya
       POSTGRES_PASSWORD: arogya
-    ports: ["5432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arogya -d arogya"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     environment:
       HF_TOKEN: ${HF_TOKEN}
-    ports: ["8000:8000"]
-    depends_on: [postgres]
+      DATABASE_URL: postgresql+psycopg://arogya:arogya@postgres:5432/arogya
+      USE_DATABASE: "true"
+      TRIAGE_MODEL_PATH: /app/models/triage-synthetic
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
