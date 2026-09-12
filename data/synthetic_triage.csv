@@ -1,0 +1,21 @@
+text,language,label
+"fever and cough for two days",en,LEVEL_3_PRIMARY_CARE
+"headache and vomiting",en,LEVEL_2_URGENT
+"chest pain and difficulty breathing",en,LEVEL_1_EMERGENCY
+"mild headache since morning",en,LEVEL_4_ROUTINE
+"मुझे दो दिन से बुखार और खांसी है",hi,LEVEL_3_PRIMARY_CARE
+"सीने में दर्द और सांस लेने में कठिनाई",hi,LEVEL_1_EMERGENCY
+"मला दोन दिवसांपासून ताप आणि खोकला आहे",mr,LEVEL_3_PRIMARY_CARE
+"छातीत दुखत आहे आणि श्वास घेण्यास त्रास होतो",mr,LEVEL_1_EMERGENCY
+"இரண்டு நாட்களாக காய்ச்சல் மற்றும் இருமல்",ta,LEVEL_3_PRIMARY_CARE
+"மார்பு வலி மற்றும் மூச்சுத்திணறல்",ta,LEVEL_1_EMERGENCY
+"రెండు రోజులుగా జ్వరం మరియు దగ్గు",te,LEVEL_3_PRIMARY_CARE
+"ఛాతీ నొప్పి మరియు శ్వాస తీసుకోవడంలో ఇబ్బంది",te,LEVEL_1_EMERGENCY
+"ಎರಡು ದಿನಗಳಿಂದ ಜ್ವರ ಮತ್ತು ಕೆಮ್ಮು",kn,LEVEL_3_PRIMARY_CARE
+"ಎದೆ ನೋವು ಮತ್ತು ಉಸಿರಾಟದ ತೊಂದರೆ",kn,LEVEL_1_EMERGENCY
+"দুই দিন ধরে জ্বর এবং কাশি",bn,LEVEL_3_PRIMARY_CARE
+"বুকে ব্যথা এবং শ্বাসকষ্ট",bn,LEVEL_1_EMERGENCY
+"രണ്ട് ദിവസമായി പനിയും ചുമയും",ml,LEVEL_3_PRIMARY_CARE
+"നെഞ്ചുവേദനയും ശ്വാസതടസ്സവും",ml,LEVEL_1_EMERGENCY
+"બે દિવસથી તાવ અને ઉધરસ",gu,LEVEL_3_PRIMARY_CARE
+"છાતીમાં દુખાવો અને શ્વાસ લેવામાં તકલીફ",gu,LEVEL_1_EMERGENCY
