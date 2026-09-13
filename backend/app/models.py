@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
@@ -91,4 +91,16 @@ class HealthRecord(Base):
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
     record_type: Mapped[str] = mapped_column(String(80))
     payload: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class SyncOperation(Base):
+    __tablename__ = "sync_operations"
+    __table_args__ = (UniqueConstraint("operation_id", name="uq_sync_operation_id"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    operation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    device_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    payload: Mapped[str] = mapped_column(Text, default="{}")
+    status: Mapped[str] = mapped_column(String(30), default="accepted")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
