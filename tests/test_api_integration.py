@@ -29,7 +29,7 @@ def test_patient_encounter_and_records():
         json={"name": "Synthetic Demo Patient", "age": 35, "sex": "F", "language": "ta"},
     )
     assert patient_response.status_code == 200
-    patient = patient_response.json()
+    patient = patient_response.json()["patient"]
     patient_id = patient["id"]
 
     fetched = client.get(f"/api/patients/{patient_id}")
@@ -49,7 +49,7 @@ def test_patient_encounter_and_records():
 
     records = client.get(f"/api/patients/{patient_id}/records")
     assert records.status_code == 200
-    assert len(records.json()) >= 1
+    assert len(records.json()["records"]) >= 1
 
 
 def test_pipeline_emergency_safety_override():
@@ -77,6 +77,44 @@ def test_referral_endpoint():
     assert body["telemedicine_available"] is True
 
 
+def test_consultation_session_lifecycle():
+    patient_response = client.post(
+        "/api/patients",
+        json={"name": "Synthetic Consultation Patient", "age": 42, "language": "hi"},
+    )
+    assert patient_response.status_code == 200
+    patient_id = patient_response.json()["patient"]["id"]
+
+    created = client.post(
+        "/api/consultations",
+        json={"patient_id": patient_id, "clinician_name": "Demo Clinician"},
+    )
+    assert created.status_code == 200
+    consultation = created.json()["consultation"]
+    consultation_id = consultation["id"]
+    assert consultation["room_id"].startswith("arogya-")
+    assert consultation["status"] == "scheduled"
+
+    active = client.patch(
+        f"/api/consultations/{consultation_id}",
+        json={"status": "active"},
+    )
+    assert active.status_code == 200
+    assert active.json()["status"] == "active"
+    assert active.json()["started_at"] is not None
+
+    fetched = client.get(f"/api/consultations/{consultation_id}")
+    assert fetched.status_code == 200
+    assert fetched.json()["id"] == consultation_id
+
+    completed = client.patch(
+        f"/api/consultations/{consultation_id}",
+        json={"status": "completed"},
+    )
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "completed"
+
+
 def test_sync_is_idempotent():
     payload = {
         "operation_id": "api-test-operation-001",
@@ -91,6 +129,7 @@ def test_sync_is_idempotent():
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["operation_id"] == second.json()["operation_id"]
+    assert second.json()["idempotent"] is True
 
     pulled = client.get("/api/sync/pull", params={"device_id": "different-device"})
     assert pulled.status_code == 200
