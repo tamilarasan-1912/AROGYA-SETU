@@ -23,7 +23,10 @@ services:
       HF_TOKEN: ${HF_TOKEN}
       DATABASE_URL: postgresql+psycopg://arogya:arogya@postgres:5432/arogya
       USE_DATABASE: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       TRIAGE_MODEL_PATH: /app/models/triage-synthetic
+    volumes:
+      - ./models:/app/models
     ports:
       - "8000:8000"
     depends_on:
