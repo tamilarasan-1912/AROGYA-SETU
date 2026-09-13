@@ -13,7 +13,14 @@ client = TestClient(app)
 def test_health_and_languages():
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["decision_support_only"] is True
+    body = health.json()
+    assert body["decision_support_only"] is True
+    assert body["backend"] == "healthy"
+    assert body["models"]["asr"]["model"] == "ai4bharat/indic-conformer-600m-multilingual"
+    assert body["models"]["translation"]["model"] == "ai4bharat/indictrans2-indic-indic-dist-320M"
+    assert body["models"]["triage"]["base_model"] == "ai4bharat/indic-bert"
+    assert body["models"]["asr"]["loaded"] is False
+    assert body["models"]["translation"]["loaded"] is False
 
     languages = client.get("/api/languages")
     assert languages.status_code == 200
