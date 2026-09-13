@@ -13,3 +13,4 @@ psycopg[binary]>=3.2
 datasets>=3.0
 scikit-learn>=1.5
 accelerate>=0.34
+IndicTransToolkit>=1.0
