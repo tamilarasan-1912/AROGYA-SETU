@@ -4,16 +4,9 @@ from app.ai.asr.indic_conformer import transcribe
 from app.ai.translation.indictrans2 import translate
 from app.ai.triage.model import analyze_triage
 from app.ai.triage.safety_rules import apply_safety
+from app.ai.pipeline import run_clinical_decision_pipeline
 from app.referral.engine import recommend_referral, FACILITIES
-from app.services.storage import (
-    create_patient,
-    get_patient,
-    list_patients,
-    store_encounter,
-    get_patient_records,
-    push_sync_operation,
-    pull_sync_operations,
-)
+from app.services.storage import create_patient, get_patient, list_patients, store_encounter, get_patient_records, push_sync_operation, pull_sync_operations
 
 router = APIRouter()
 SUPPORTED_LANGUAGES = ["en","as","bn","brx","doi","gu","hi","kn","gom","ks","mai","ml","mr","mni","ne","or","pa","sa","sat","snd","ta","te","ur"]
@@ -29,6 +22,15 @@ class TriageRequest(BaseModel):
     language: str = "en"
     vitals: dict = Field(default_factory=dict)
     history: list = Field(default_factory=list)
+
+class PipelineRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=20000)
+    language: str = "en"
+    patient_id: str | None = None
+    vitals: dict = Field(default_factory=dict)
+    history: list = Field(default_factory=list)
+    location: str = ""
+    specialty: str | None = None
 
 class ReferralRequest(BaseModel):
     triage_level: str
@@ -63,8 +65,7 @@ def languages():
 async def asr_endpoint(audio_file: UploadFile = File(...), language: str = "hi"):
     if language not in SUPPORTED_LANGUAGES:
         raise HTTPException(400, "Unsupported language")
-    allowed = {"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/webm","audio/ogg"}
-    if audio_file.content_type not in allowed:
+    if audio_file.content_type not in {"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/webm","audio/ogg"}:
         raise HTTPException(400, "Unsupported audio MIME type")
     audio = await audio_file.read()
     if len(audio) > 25 * 1024 * 1024:
@@ -81,8 +82,13 @@ def translation_endpoint(req: TranslationRequest):
 def triage_endpoint(req: TriageRequest):
     if req.language not in SUPPORTED_LANGUAGES:
         raise HTTPException(400, "Unsupported language")
-    ai = analyze_triage(req.text, req.language, req.vitals, req.history)
-    return apply_safety(ai, req.text, req.vitals)
+    return apply_safety(analyze_triage(req.text, req.language, req.vitals, req.history), req.text, req.vitals)
+
+@router.post("/pipeline/analyze")
+def pipeline_endpoint(req: PipelineRequest):
+    if req.language not in SUPPORTED_LANGUAGES:
+        raise HTTPException(400, "Unsupported language")
+    return run_clinical_decision_pipeline(req.text, req.language, req.patient_id, req.vitals, req.history, req.location, req.specialty)
 
 @router.post("/referral/recommend")
 def referral_endpoint(req: ReferralRequest):
@@ -113,7 +119,7 @@ def patient_endpoint(patient_id: str):
 def create_encounter(req: EncounterRequest):
     if not get_patient(req.patient_id):
         raise HTTPException(404, "Patient not found")
-    return store_encounter(req.model_dump() | {"patient_id": req.patient_id})
+    return store_encounter(req.model_dump())
 
 @router.get("/patients/{patient_id}/records")
 def records(patient_id: str):
