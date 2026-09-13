@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query, WebSocket
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, WebSocket, Form
 from pydantic import BaseModel, Field, ConfigDict
 from app.ai.asr.indic_conformer import transcribe
 from app.ai.translation.indictrans2 import translate
@@ -15,6 +15,7 @@ from app.services.storage import (
 
 router = APIRouter()
 SUPPORTED_LANGUAGES = ["en","as","bn","brx","doi","gu","hi","kn","gom","ks","mai","ml","mr","mni","ne","or","pa","sa","sat","snd","ta","te","ur"]
+AUDIO_MIME_TYPES = {"audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4", "audio/webm", "audio/ogg"}
 
 class TranslationRequest(BaseModel):
     text: str = Field(min_length=1, max_length=10000)
@@ -79,12 +80,38 @@ def languages():
 async def asr_endpoint(audio_file: UploadFile = File(...), language: str = "hi"):
     if language not in SUPPORTED_LANGUAGES:
         raise HTTPException(400, "Unsupported language")
-    if audio_file.content_type not in {"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/webm","audio/ogg"}:
+    if audio_file.content_type not in AUDIO_MIME_TYPES:
         raise HTTPException(400, "Unsupported audio MIME type")
     audio = await audio_file.read()
     if len(audio) > 25 * 1024 * 1024:
         raise HTTPException(413, "Audio file too large")
     return transcribe(audio, language)
+
+@router.post("/pipeline/analyze-audio")
+async def audio_pipeline_endpoint(
+    audio_file: UploadFile = File(...),
+    language: str = Form("hi"),
+    patient_id: str | None = Form(None),
+    location: str = Form(""),
+    specialty: str | None = Form(None),
+):
+    """Run the demo acceptance path: audio -> ASR -> symptoms/triage/safety -> referral -> record."""
+    if language not in SUPPORTED_LANGUAGES:
+        raise HTTPException(400, "Unsupported language")
+    if audio_file.content_type not in AUDIO_MIME_TYPES:
+        raise HTTPException(400, "Unsupported audio MIME type")
+    audio = await audio_file.read()
+    if len(audio) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Audio file too large")
+    asr = transcribe(audio, language)
+    if not asr.get("transcript"):
+        raise HTTPException(503, "ASR model is unavailable or could not transcribe the audio")
+    result = run_clinical_decision_pipeline(
+        asr["transcript"], language, patient_id, {}, [], location, specialty
+    )
+    result["asr"] = asr
+    result["pipeline"] = ["audio_ingestion", "asr", "symptom_extraction", "triage", "safety", "referral", "recording"]
+    return result
 
 @router.post("/translation/translate")
 def translation_endpoint(req: TranslationRequest):
