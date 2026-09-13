@@ -90,7 +90,7 @@ def test_consultation_session_lifecycle():
         json={"patient_id": patient_id, "clinician_name": "Demo Clinician"},
     )
     assert created.status_code == 200
-    consultation = created.json()["consultation"]
+    consultation = created.json()
     consultation_id = consultation["id"]
     assert consultation["room_id"].startswith("arogya-")
     assert consultation["status"] == "scheduled"
