@@ -1,0 +1,11 @@
+{
+  "name": "AROGYASETU AI",
+  "short_name": "AROGYASETU",
+  "description": "Multilingual offline-first rural healthcare orchestrator",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "lang": "en",
+  "icons": []
+}
