@@ -73,6 +73,26 @@ def test_pipeline_emergency_safety_override():
     assert "chest_pain" in body["triage"]["red_flags"]
 
 
+def test_audio_pipeline_contract_rejects_invalid_mime():
+    response = client.post(
+        "/api/pipeline/analyze-audio",
+        files={"audio_file": ("note.txt", b"not-audio", "text/plain")},
+        data={"language": "ta"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unsupported audio MIME type"
+
+
+def test_audio_pipeline_contract_rejects_unsupported_language():
+    response = client.post(
+        "/api/pipeline/analyze-audio",
+        files={"audio_file": ("note.wav", b"RIFF", "audio/wav")},
+        data={"language": "xx"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unsupported language"
+
+
 def test_referral_endpoint():
     response = client.post(
         "/api/referral/recommend",
