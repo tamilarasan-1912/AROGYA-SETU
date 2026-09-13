@@ -5,13 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
 
-app = FastAPI(title="AROGYASETU AI", version="0.2.0")
+app = FastAPI(title="AROGYASETU AI", version="0.3.0")
+
+cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(router, prefix="/api")
 
@@ -24,7 +26,6 @@ def startup() -> None:
         from app.db import init_db
         init_db()
     except Exception as exc:
-        # Keep the service bootable for an offline/demo environment.
         print(f"Database initialization skipped: {exc}")
 
 
