@@ -6,7 +6,18 @@ from app.ai.triage.model import analyze_triage
 from app.ai.triage.safety_rules import apply_safety
 from app.ai.pipeline import run_clinical_decision_pipeline
 from app.referral.engine import recommend_referral, FACILITIES
-from app.services.storage import create_patient, get_patient, list_patients, store_encounter, get_patient_records, push_sync_operation, pull_sync_operations
+from app.services.storage import (
+    create_patient,
+    get_patient,
+    list_patients,
+    store_encounter,
+    get_patient_records,
+    create_consultation,
+    get_consultation,
+    update_consultation,
+    push_sync_operation,
+    pull_sync_operations,
+)
 
 router = APIRouter()
 SUPPORTED_LANGUAGES = ["en","as","bn","brx","doi","gu","hi","kn","gom","ks","mai","ml","mr","mni","ne","or","pa","sa","sat","snd","ta","te","ur"]
@@ -49,6 +60,15 @@ class EncounterRequest(BaseModel):
     original_language: str
     original_transcript: str = Field(default="", max_length=20000)
     normalized_data: dict = Field(default_factory=dict)
+
+class ConsultationRequest(BaseModel):
+    patient_id: str
+    clinician_name: str | None = Field(default=None, max_length=120)
+    room_id: str | None = Field(default=None, max_length=120)
+
+class ConsultationStatusRequest(BaseModel):
+    status: str = Field(pattern="^(scheduled|active|completed|cancelled)$")
+    clinician_name: str | None = Field(default=None, max_length=120)
 
 class SyncRequest(BaseModel):
     operation_id: str = Field(min_length=1, max_length=120)
@@ -128,12 +148,25 @@ def records(patient_id: str):
     return get_patient_records(patient_id)
 
 @router.post("/consultations")
-def consultation(payload: dict):
-    if not payload.get("patient_id"):
-        raise HTTPException(422, "patient_id is required")
-    if not get_patient(payload["patient_id"]):
+def consultation(req: ConsultationRequest):
+    if not get_patient(req.patient_id):
         raise HTTPException(404, "Patient not found")
-    return store_encounter({"type":"consultation", "record_type":"consultation", **payload})
+    payload = req.model_dump(exclude_none=True)
+    return create_consultation(payload)
+
+@router.get("/consultations/{consultation_id}")
+def consultation_details(consultation_id: str):
+    result = get_consultation(consultation_id)
+    if not result:
+        raise HTTPException(404, "Consultation not found")
+    return result
+
+@router.patch("/consultations/{consultation_id}")
+def consultation_status(consultation_id: str, req: ConsultationStatusRequest):
+    result = update_consultation(consultation_id, req.status, req.clinician_name)
+    if not result:
+        raise HTTPException(404, "Consultation not found")
+    return result
 
 @router.post("/sync/push")
 def sync_push(req: SyncRequest):
