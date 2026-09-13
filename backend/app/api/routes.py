@@ -145,7 +145,10 @@ def records(patient_id: str):
 def consultation(req: ConsultationRequest):
     if not get_patient(req.patient_id):
         raise HTTPException(404, "Patient not found")
-    return create_consultation(req.model_dump(exclude_none=True))
+    result = create_consultation(req.model_dump(exclude_none=True))
+    if not result.get("created"):
+        raise HTTPException(503, result.get("error", "Consultation could not be created"))
+    return result["consultation"]
 
 @router.get("/consultations/{consultation_id}")
 def consultation_details(consultation_id: str):
