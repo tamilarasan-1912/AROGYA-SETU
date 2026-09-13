@@ -8,6 +8,7 @@ USE_DATABASE = os.getenv("USE_DATABASE", "false").lower() == "true"
 _PATIENTS: dict[str, dict] = {}
 _RECORDS: dict[str, list[dict]] = {}
 _SYNC_OPERATIONS: dict[str, dict] = {}
+_CONSULTATIONS: dict[str, dict] = {}
 
 
 def _now() -> str:
@@ -116,6 +117,72 @@ def get_patient_records(patient_id: str) -> dict:
         except Exception as exc:
             return {"patient_id": patient_id, "records": [], "requires_database": True, "error": str(exc)}
     return {"patient_id": patient_id, "records": _RECORDS.get(patient_id, []), "storage": "memory-demo"}
+
+
+def create_consultation(payload: dict) -> dict:
+    consultation_id = payload.get("id") or str(uuid.uuid4())
+    room_id = payload.get("room_id") or f"arogya-{consultation_id[:8]}"
+    consultation = {
+        "id": consultation_id,
+        "patient_id": payload["patient_id"],
+        "clinician_name": payload.get("clinician_name"),
+        "room_id": room_id,
+        "status": payload.get("status", "scheduled"),
+        "started_at": payload.get("started_at"),
+        "created_at": _now(),
+    }
+    if USE_DATABASE:
+        try:
+            from app.db import db_session
+            from app.models import Consultation
+            with db_session() as db:
+                row = Consultation(id=consultation_id, patient_id=consultation["patient_id"], clinician_name=consultation["clinician_name"], room_id=room_id, status=consultation["status"])
+                db.add(row)
+            return {"consultation": consultation, "created": True, "storage": "postgresql"}
+        except Exception as exc:
+            return {"created": False, "requires_database": True, "error": str(exc)}
+    _CONSULTATIONS[consultation_id] = consultation
+    return {"consultation": consultation, "created": True, "storage": "memory-demo"}
+
+
+def get_consultation(consultation_id: str) -> dict | None:
+    if USE_DATABASE:
+        try:
+            from app.db import db_session
+            from app.models import Consultation
+            with db_session() as db:
+                row = db.get(Consultation, consultation_id)
+                if row:
+                    return {"id": row.id, "patient_id": row.patient_id, "clinician_name": row.clinician_name, "room_id": row.room_id, "status": row.status, "started_at": row.started_at.isoformat() if row.started_at else None}
+        except Exception:
+            pass
+    return _CONSULTATIONS.get(consultation_id)
+
+
+def update_consultation(consultation_id: str, status: str, clinician_name: str | None = None) -> dict | None:
+    consultation = get_consultation(consultation_id)
+    if not consultation:
+        return None
+    if USE_DATABASE:
+        try:
+            from app.db import db_session
+            from app.models import Consultation
+            with db_session() as db:
+                row = db.get(Consultation, consultation_id)
+                row.status = status
+                if clinician_name is not None:
+                    row.clinician_name = clinician_name
+                if status == "active" and row.started_at is None:
+                    row.started_at = datetime.utcnow()
+                return {"id": row.id, "patient_id": row.patient_id, "clinician_name": row.clinician_name, "room_id": row.room_id, "status": row.status, "started_at": row.started_at.isoformat() if row.started_at else None}
+        except Exception:
+            return None
+    consultation["status"] = status
+    if clinician_name is not None:
+        consultation["clinician_name"] = clinician_name
+    if status == "active" and not consultation.get("started_at"):
+        consultation["started_at"] = _now()
+    return consultation
 
 
 def push_sync_operation(operation: dict) -> dict:
