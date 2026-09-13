@@ -1,4 +1,34 @@
-EMERGENCY_TERMS = {"unconscious":"unconsciousness","severe bleeding":"severe_bleeding","difficulty breathing":"breathing_difficulty","shortness of breath":"breathing_difficulty","chest pain":"chest_pain","seizure":"seizure","stroke":"stroke_sign","மூச்சுத்திணறல்":"breathing_difficulty","மூச்சு விட சிரமம்":"breathing_difficulty","மார்பு வலி":"chest_pain","மயக்கம்":"unconsciousness","विकलता":"breathing_difficulty","सांस लेने में कठिनाई":"breathing_difficulty","सीने में दर्द":"chest_pain","बेहोश":"unconsciousness","श्वास घेण्यास त्रास":"breathing_difficulty","छातीत दुखणे":"chest_pain","बेशुद्ध":"unconsciousness","శ్వాస తీసుకోవడంలో ఇబ్బంది":"breathing_difficulty","ఛాతి నొప్పి":"chest_pain","స్పృహ కోల్పోవడం":"unconsciousness","ಉಸಿರಾಟದ ತೊಂದರೆ":"breathing_difficulty","ಎದೆ ನೋವು":"chest_pain","ಪ್ರಜ್ಞೆ ತಪ್ಪುವುದು":"unconsciousness","শ্বাস নিতে কষ্ট":"breathing_difficulty","বুকে ব্যথা":"chest_pain","অজ্ঞান":"unconsciousness","ശ്വാസംമുട്ടൽ":"breathing_difficulty","നെഞ്ചുവേദന":"chest_pain","ബോധരഹിത":"unconsciousness"}
+EMERGENCY_TERMS = {
+    "unconscious": "unconsciousness",
+    "severe bleeding": "severe_bleeding",
+    "difficulty breathing": "breathing_difficulty",
+    "shortness of breath": "breathing_difficulty",
+    "chest pain": "chest_pain",
+    "seizure": "seizure",
+    "stroke": "stroke_sign",
+    "மூச்சுத்திணறல்": "breathing_difficulty",
+    "மூச்சு விட சிரமம்": "breathing_difficulty",
+    "மார்பு வலி": "chest_pain",
+    "மயக்கம்": "unconsciousness",
+    "सांस लेने में कठिनाई": "breathing_difficulty",
+    "सीने में दर्द": "chest_pain",
+    "बेहोश": "unconsciousness",
+    "श्वास घेण्यास त्रास": "breathing_difficulty",
+    "छातीत दुखणे": "chest_pain",
+    "बेशुद्ध": "unconsciousness",
+    "శ్వాస తీసుకోవడంలో ఇబ్బంది": "breathing_difficulty",
+    "ఛాతి నొప్పి": "chest_pain",
+    "స్పృహ కోల్పోవడం": "unconsciousness",
+    "ಉಸಿರಾಟದ ತೊಂದರೆ": "breathing_difficulty",
+    "ಎದೆ ನೋವು": "chest_pain",
+    "ಪ್ರಜ್ಞೆ ತಪ್ಪುವುದು": "unconsciousness",
+    "শ্বাস নিতে কষ্ট": "breathing_difficulty",
+    "বুকে ব্যথা": "chest_pain",
+    "অজ্ঞান": "unconsciousness",
+    "ശ്വാസംമുട്ടൽ": "breathing_difficulty",
+    "നെഞ്ചുവേദന": "chest_pain",
+    "ബോധരഹിത": "unconsciousness",
+}
 
 
 def apply_safety(ai_result: dict, text: str, vitals: dict):
