@@ -15,8 +15,16 @@ export function PatientWorkflow({ language, online, patientId, onPatientChange }
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function loadPatients() { if (!online) return; const r = await fetch(`${API}/patients`); if (r.ok) setPatients(await r.json()); }
-  async function loadRecords(id: string) { if (!online) return; const r = await fetch(`${API}/patients/${id}/records`); if (r.ok) setRecords((await r.json()).records || []); }
+  async function loadPatients() {
+    if (!online) return;
+    const r = await fetch(`${API}/patients`);
+    if (r.ok) { const body = await r.json(); setPatients(body.patients || []); }
+  }
+  async function loadRecords(id: string) {
+    if (!online) return;
+    const r = await fetch(`${API}/patients/${id}/records`);
+    if (r.ok) setRecords((await r.json()).records || []);
+  }
   useEffect(() => { void loadPatients(); }, [online]);
   useEffect(() => { if (patientId) void loadRecords(patientId); else setRecords([]); }, [patientId, online]);
 
@@ -26,8 +34,8 @@ export function PatientWorkflow({ language, online, patientId, onPatientChange }
     try {
       const r = await fetch(`${API}/patients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim(), age: age ? Number(age) : null, sex: sex || null, language }) });
       if (!r.ok) throw new Error(`Registration failed: ${r.status}`);
-      const body = await r.json(); const id = body.patient.id;
-      setPatients(p => [body.patient, ...p.filter(x => x.id !== id)]); onPatientChange(id); setName(''); setAge(''); setSex(''); setStatus('Patient registered and selected.');
+      const body = await r.json(); const patient = body.patient || body; const id = patient.id;
+      setPatients(p => [patient, ...p.filter(x => x.id !== id)]); onPatientChange(id); setName(''); setAge(''); setSex(''); setStatus('Patient registered and selected.');
     } catch (e) { setStatus(e instanceof Error ? e.message : 'Registration failed.'); } finally { setBusy(false); }
   }
   async function startConsultation() {
@@ -36,7 +44,7 @@ export function PatientWorkflow({ language, online, patientId, onPatientChange }
     try {
       const r = await fetch(`${API}/consultations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patient_id: patientId, status: 'scheduled' }) });
       if (!r.ok) throw new Error(`Consultation failed: ${r.status}`);
-      const body = await r.json(); setConsultation(body.consultation); setStatus(`Room ready: ${body.consultation.room_id}`);
+      const consultation = await r.json(); setConsultation(consultation); setStatus(`Room ready: ${consultation.room_id}`);
     } catch (e) { setStatus(e instanceof Error ? e.message : 'Consultation failed.'); } finally { setBusy(false); }
   }
   async function updateConsultation(next: string) {
