@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, WebSocket
 from pydantic import BaseModel, Field, ConfigDict
 from app.ai.asr.indic_conformer import transcribe
 from app.ai.translation.indictrans2 import translate
@@ -6,17 +6,11 @@ from app.ai.triage.model import analyze_triage
 from app.ai.triage.safety_rules import apply_safety
 from app.ai.pipeline import run_clinical_decision_pipeline
 from app.referral.engine import recommend_referral, FACILITIES
+from app.telemedicine.signaling import signaling_session
 from app.services.storage import (
-    create_patient,
-    get_patient,
-    list_patients,
-    store_encounter,
-    get_patient_records,
-    create_consultation,
-    get_consultation,
-    update_consultation,
-    push_sync_operation,
-    pull_sync_operations,
+    create_patient, get_patient, list_patients, store_encounter, get_patient_records,
+    create_consultation, get_consultation, update_consultation,
+    push_sync_operation, pull_sync_operations,
 )
 
 router = APIRouter()
@@ -151,8 +145,7 @@ def records(patient_id: str):
 def consultation(req: ConsultationRequest):
     if not get_patient(req.patient_id):
         raise HTTPException(404, "Patient not found")
-    payload = req.model_dump(exclude_none=True)
-    return create_consultation(payload)
+    return create_consultation(req.model_dump(exclude_none=True))
 
 @router.get("/consultations/{consultation_id}")
 def consultation_details(consultation_id: str):
@@ -167,6 +160,10 @@ def consultation_status(consultation_id: str, req: ConsultationStatusRequest):
     if not result:
         raise HTTPException(404, "Consultation not found")
     return result
+
+@router.websocket("/telemedicine/ws/{room_id}/{peer_id}")
+async def telemedicine_websocket(websocket: WebSocket, room_id: str, peer_id: str):
+    await signaling_session(room_id, peer_id, websocket)
 
 @router.post("/sync/push")
 def sync_push(req: SyncRequest):
