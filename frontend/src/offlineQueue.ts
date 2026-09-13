@@ -1,6 +1,25 @@
 import Dexie, { Table } from 'dexie';
 
-type SyncOperation = { id?: number; operation_id: string; endpoint: string; entity_type: string; entity_id?: string; payload: unknown; created_at: string; synced: number };
+type SyncOperation = {
+  id?: number;
+  operation_id: string;
+  endpoint: string;
+  entity_type: string;
+  entity_id?: string;
+  payload: unknown;
+  created_at: string;
+  synced: number;
+};
+
+export type PulledOperation = {
+  operation_id: string;
+  device_id: string;
+  entity_type: string;
+  entity_id?: string;
+  payload: Record<string, unknown>;
+  status: string;
+  created_at?: string;
+};
 
 class OfflineDB extends Dexie {
   operations!: Table<SyncOperation, number>;
@@ -28,7 +47,17 @@ export async function flushQueue(apiBase: string, deviceId = 'web-device') {
   let synced = 0;
   for (const item of pending) {
     try {
-      const response = await fetch(`${apiBase}/sync/push`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operation_id: item.operation_id, device_id: deviceId, entity_type: item.entity_type, entity_id: item.entity_id, payload: item.payload }) });
+      const response = await fetch(`${apiBase}/sync/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation_id: item.operation_id,
+          device_id: deviceId,
+          entity_type: item.entity_type,
+          entity_id: item.entity_id,
+          payload: item.payload,
+        }),
+      });
       if (!response.ok) break;
       await offlineDB.operations.update(item.id!, { synced: 1 });
       synced += 1;
@@ -37,4 +66,33 @@ export async function flushQueue(apiBase: string, deviceId = 'web-device') {
     }
   }
   return { synced, remaining: await pendingCount() };
+}
+
+export async function pullRemoteOperations(apiBase: string, deviceId = 'web-device') {
+  if (!navigator.onLine) return [] as PulledOperation[];
+  const response = await fetch(`${apiBase}/sync/pull?device_id=${encodeURIComponent(deviceId)}`);
+  if (!response.ok) throw new Error(`Sync pull failed: ${response.status}`);
+  const body = await response.json();
+  return (body.operations || []) as PulledOperation[];
+}
+
+export async function syncNow(apiBase: string, deviceId = 'web-device') {
+  const pushed = await flushQueue(apiBase, deviceId);
+  const pulled = await pullRemoteOperations(apiBase, deviceId);
+  return { ...pushed, pulled };
+}
+
+export function registerOnlineSync(apiBase: string, deviceId = 'web-device', onComplete?: (result: Awaited<ReturnType<typeof syncNow>>) => void) {
+  const run = async () => {
+    try {
+      const result = await syncNow(apiBase, deviceId);
+      onComplete?.(result);
+    } catch {
+      // Keep the local queue intact; the next online event can retry.
+    }
+  };
+
+  window.addEventListener('online', run);
+  if (navigator.onLine) void run();
+  return () => window.removeEventListener('online', run);
 }
