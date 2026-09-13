@@ -47,23 +47,11 @@ export async function flushQueue(apiBase: string, deviceId = 'web-device') {
   let synced = 0;
   for (const item of pending) {
     try {
-      const response = await fetch(`${apiBase}/sync/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operation_id: item.operation_id,
-          device_id: deviceId,
-          entity_type: item.entity_type,
-          entity_id: item.entity_id,
-          payload: item.payload,
-        }),
-      });
+      const response = await fetch(`${apiBase}/sync/push`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operation_id: item.operation_id, device_id: deviceId, entity_type: item.entity_type, entity_id: item.entity_id, payload: item.payload }) });
       if (!response.ok) break;
       await offlineDB.operations.update(item.id!, { synced: 1 });
       synced += 1;
-    } catch {
-      break;
-    }
+    } catch { break; }
   }
   return { synced, remaining: await pendingCount() };
 }
@@ -84,14 +72,8 @@ export async function syncNow(apiBase: string, deviceId = 'web-device') {
 
 export function registerOnlineSync(apiBase: string, deviceId = 'web-device', onComplete?: (result: Awaited<ReturnType<typeof syncNow>>) => void) {
   const run = async () => {
-    try {
-      const result = await syncNow(apiBase, deviceId);
-      onComplete?.(result);
-    } catch {
-      // Keep the local queue intact; the next online event can retry.
-    }
+    try { onComplete?.(await syncNow(apiBase, deviceId)); } catch { /* Preserve queue for retry. */ }
   };
-
   window.addEventListener('online', run);
   if (navigator.onLine) void run();
   return () => window.removeEventListener('online', run);
