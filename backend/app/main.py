@@ -4,8 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
+from app.ai.model_status import get_model_status
 
-app = FastAPI(title="AROGYASETU AI", version="0.3.0")
+app = FastAPI(title="AROGYASETU AI", version="0.3.1")
 
 cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
@@ -34,8 +35,6 @@ def health():
     return {
         "backend": "healthy",
         "database": "enabled" if os.getenv("USE_DATABASE", "false").lower() == "true" else "demo-memory",
-        "asr_model": "ai4bharat/indic-conformer-600m-multilingual",
-        "translation_model": "ai4bharat/indictrans2-indic-indic-dist-320M",
-        "triage_model": "ai4bharat/indic-bert + synthetic fine-tune when available",
+        "models": get_model_status(),
         "decision_support_only": True,
     }
